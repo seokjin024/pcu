@@ -1,37 +1,69 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>갓생 살기</title>
+        <meta charset="UTF-8">
+        <title>갓생 살기 플래너</title>
         <style>
-            html, body {margin: 0; padding: 0; height: 100%; }
-            header { width: 100%; height: 10%;}
+            header {text-align: center;}
+            nav {width: 15%; height: 70%; float: left;}
             section {width: 70%; height: 70%; float: left;}
+            footer {width: 100%; height: 15%; text-align: center; clear: both;}
+
         </style>
     </head>
     <body>
-        <header><h1>주간 '갓생 살기' 플래너</h1></header>
-        <hr>
+
+        <header>
+            <h1>'주간 갓생 살기 플래너'</h1>
+            <hr>
+        </header>
+
+        <nav>
+            <h3>로그인</h3>
+            ID : <input type="text">
+            Password : <input type="password">
+        </nav>
+
         <section>
-            <h3>공부 목표 설정</h3>
-        공부 과목 : <input type="text" list="subject">
-        <datalist id="subject">
-            <option value="국어"></option>
-            <option value="수학"></option>
-            <option value="영어"></option>
-            <option value="과학"></option>
-            <option value="한국사"></option>
-        </datalist><br>
-        목표 공부 시간 : <select name="time">
-            <option value="1">1시간</option>
-            <option value="2">2시간</option>
-            <option value="3">3시간</option>
-            <option value="4">4시간 이상</option>
-        </select><br>
-        공부량 : <input type="text">
+            <h2>오늘의 목표</h2>
+            <hr>
+            <article>
+                공부 과목 : <select name="subjuct">
+                    <option value="1">국어</option>
+                    <option value="2">수학</option>
+                    <option value="3">영어</option>
+                    <option value="4">과학</option>
+                    <option value="5">한국사</option>
+
+                </select>
+            </article>
+
+            <br>
+
+            <article>
+                공부 시작 시간<br>
+                <input type="time" value="12:00">
+            </article>
+
+            <br>
+
+            <article>
+                운동 할당량<br>
+                0 <input type="range" min="0" max="100"> 100
+            </article>
+
+            <br>
+
+            <article>
+                오늘을 위한 다짐<br>
+                <textarea cols="100" rows="10" placeholder="예 : 1시간 동안 핸드폰 만지지 않기"></textarea>
+            </article>
+               
         </section>
 
-
-
-
+        <footer>
+            <p>2026 주간 갓생 살기 플래너</p>
+        </footer>
+  
     </body>
 </html>
