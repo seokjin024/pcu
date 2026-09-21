@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>공 잡기 게임</title>
+
+<style>
+body{
+    text-align:center;
+    font-family:Arial;
+}
+
+canvas{
+    border:2px solid black;
+}
+</style>
+
+</head>
+<body>
+
+<h1>공 잡기 게임</h1>
+
+<p>
+점수 :
+<span id="score">0</span> |
+남은 시간 : <span id="time">30</span>초 |
+속도 : <span id="speed">1</span> 단계
+</p>
+
+<button onclick="startGame()">게임 시작</button><br>
+
+<canvas
+    id="gameCanvas"
+    width="600"
+    height="400">
+</canvas>
+<script>
+    const Canvas = document.getElementById("gameCanvas");
+    const ctx = Canvas.getContext("2d");
+    
+    const scoreText = document.getElementById("score");
+    let score = 0;
+
+    const speedText = document.getElementById("speed");
+    let speedLevel = 1;
+
+    const timeText = document.getElementById("time");
+    let timeleft = 30;
+    let gameRunning = false;
+    let timerId;
+    let animId;
+
+    function startGame() {
+        if (animId) {
+            cancelAnimationFrame(animId);
+        }
+
+        score = 0;
+        timeleft = 30;
+        speedLevel = 1;
+
+        ball.x = 300;
+        ball.y = 200;
+        ball.dx = 3;
+        ball.dy = 2;
+
+        gameRunning = true;
+
+        clearInterval(timerId);
+        timerId = setInterval(() => {
+            timeleft--;
+            timeText.textContent = timeleft;
+            if(timeleft <= 0) endGame();
+        }, 1000);
+        drawGame();
+    }
+
+    function endGame(){
+        clearInterval(timerId);
+        cancelAnimationFrame(animId);
+        gameRunning = false;
+        ctx.clearRect(0, 0, Canvas.width, Canvas.height);
+        ctx.font = "32px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.fillText("게임 종료!", Canvas.width / 2, Canvas.height / 2 - 30);
+        ctx.fillText("최종점수 : " + score, Canvas.width / 2, Canvas.height / 2 + 20);
+    }
+    const ball = {
+        x:300, y:200, radius:25, dx:3, dy:2
+    };
+
+    function drawBall() {
+        if (!gameRunning) return;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+        ctx.fillStyle = "tomato";
+        ctx.fill();
+    }
+    
+    drawBall();
+    function updateBall() {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if (ball.x+ball.radius > Canvas.width || ball.x-ball.radius < 0){
+            ball.dx = -ball.dx;
+        }
+        if (ball.y+ball.radius > Canvas.height || ball.y-ball.radius < 0){
+            ball.dy = -ball.dy;
+        }
+    }
+    function drawGame() {
+        ctx.clearRect(0, 0, Canvas.width, Canvas.height);
+        drawBall();
+        updateBall();
+        animId = requestAnimationFrame(drawGame);
+    }
+    //drawGame();
+    //setInterval(drawGame, 16);
+
+    Canvas.addEventListener("click", function(event){
+        const rect = Canvas.getBoundingClientRect ();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const dx = mouseX - ball.x;
+        const dy = mouseY - ball.y;
+
+        const distance = Math.sqrt(dx*dx+dy*dy);
+
+        if (distance <= ball.radius) {
+            if(gameRunning) {score++;}
+            scoreText.textContent = score;
+            if(gameRunning) {speedLevel++;}
+            speedText.textContent = speedLevel;
+            if (ball.dx > 0) {
+                ball.dx += 0.5
+            } else {
+                ball.dx -=0.5;
+            }
+
+            if (ball.dy > 0) {
+                ball.dy += 0.5
+            } else {
+                ball.dy -=0.5;
+            } 
+            moveballRandom();
+        }
+    }
+);
+
+function moveballRandom() {
+    ball.x = Math.random() * (Canvas.width - ball.radius*2) + ball.radius;
+    ball.y = Math.random() * (Canvas.height - ball.radius*2) + ball.radius;
+}
+</script>
+</body>
+</html>
