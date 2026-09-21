@@ -145,6 +145,11 @@ canvas{
             } else {
                 ball.dy -=0.5;
             } 
+
+            Canvas.style.backgroundColor = "yellow";
+            setTimeout(() => {
+                Canvas.style.backgroundColor = "white";
+            }, 100)
             moveballRandom();
         }
     }
