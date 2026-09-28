@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pong 게임</title>
+
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial;
+            background: #f5f5f5;
+        }
+
+        canvas {
+            border: 2px solid black;
+            background: #111;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Pong 게임</h1>
+    <p>왼쪽 플레이어: W / S | 오른쪽 플레이어: ↑ / ↓</p>
+    <p>왼쪽 점수: <span id="leftScore">0</span> | 오른쪽 점수: <span id="rightScore">0</span></p>
+
+    <canvas id="gameCanvas" width="700" height="400"></canvas>
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const leftScoreText = document.getElementById("leftScore");
+    const rightScoreText = document.getElementById("rightScore");
+
+    let leftScore = 0;
+    let rightScore = 0;
+
+    let leftCombo = 0;
+    let rightCombo = 0;
+
+    function drawCenterLine() {
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, 0);
+        ctx.lineTo(canvas.width/2, canvas.height);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+        ctx.setLineDash([]);
+        }
+        drawCenterLine();
+
+        const ball = {
+            x: canvas.width/2,
+            y: canvas.height/2,
+            radius : 10,
+            dx:5,
+            dy:3
+        };
+
+        function drawBall(){
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius,0, Math.PI * 2);
+            ctx.fillStyle = "white";
+            ctx.fill();
+            }
+            drawBall();
+
+            function moveBall(){
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+
+                if(ball.y-ball.radius < 0 || ball.y+ball.radius > canvas.height) {
+                    ball.dy *= -1;
+                }
+
+                if(ball.x-ball.radius < 0){
+                    rightScore++;
+                    rightCombo++;
+
+                    leftCombo = 0;
+                    leftpaddle.height = leftpaddle.originalheight;
+                    
+                    rightScoreText.textContent = rightScore;
+                    resetBall();
+                }
+
+                if(ball.x+ball.radius > canvas.width){
+                    leftScore++;
+                    leftCombo++;
+
+                    rightCombo = 0;
+                    rightpaddle.height = rightpaddle.originalheight;
+                    
+                    leftScoreText.textContent = leftScore;
+                    resetBall();
+                }
+
+                if(rightCombo >= 3 && rightpaddle.height > 30){
+                    rightpaddle.height -= 10;
+                    rightCombo = 0;
+                }
+
+                if(leftCombo >= 3 && leftpaddle.height > 30){
+                    leftpaddle.height -= 10;
+                    leftCombo = 0;
+                }
+
+            
+
+                if(isBallHitpaddle(leftpaddle)){
+                    ball.dx = Math.abs(ball.dx);
+                }
+
+                if(isBallHitpaddle(rightpaddle)){
+                    ball.dx = -Math.abs(ball.dx);
+                }
+
+            }
+
+            function isBallHitpaddle(paddle){
+                return (
+                    ball.x - ball.radius < paddle.x + paddle.width &&
+                    ball.x + ball.radius > paddle.x &&
+                    ball.y - ball.radius < paddle.y + paddle.height &&
+                    ball.y + ball.radius > paddle.y
+                );
+            }
+
+            const keys = {};
+
+            document.addEventListener("keydown", function (event) {
+                keys[event.key] = true;
+            });
+            document.addEventListener("keyup", function (event){
+                keys[event.key] = false;
+            });
+
+            function movePaddles(){
+                if (keys["w"] || keys["W"]){
+                    leftpaddle.y -= leftpaddle.speed;
+                }
+                if (keys["s"] || keys["S"]){
+                    leftpaddle.y += leftpaddle.speed;
+                }
+
+                if(keys["ArrowUp"]){
+                    rightpaddle.y -= rightpaddle.speed;
+                }
+                if(keys["ArrowDown"]){
+                    rightpaddle.y += rightpaddle.speed;
+                }
+                keyPaddleInside(leftpaddle);
+                keyPaddleInside(rightpaddle);
+            }
+
+            //function moveAi(){
+            //    const aiCenter = rightpaddle.y + rightpaddle.height/2;
+            //    const speed = 2;
+            //    if(ball.y < aiCenter) {
+            //        rightpaddle.y -= speed;
+            //    }
+            //    else{
+            //        rightpaddle.y += speed;
+            //    }
+            //    keyPaddleInside(rightpaddle);
+            //}
+
+            function keyPaddleInside(paddle){
+                if(paddle.y < 0){
+                    paddle.y = 0;
+                }
+                if(paddle.y + paddle.height > canvas.height){
+                    paddle.y = canvas.height - paddle.height;
+                }
+            }
+
+
+            function resetBall(){
+                ball.x = canvas.width/2;
+                ball.y = canvas.height/2;
+                ball.dx *= -1;
+                ball.dy = Math.random() *6 -3;
+                if(ball.dy==0){
+                    ball.dy = 2;
+                }
+            }
+
+            const paddlewidth = 12;
+            const paddleheight = 80;
+
+            const leftpaddle = {
+                x:30,
+                y:canvas.height/2 - paddleheight/2,
+                width:paddlewidth,
+                height:paddleheight,
+                originalheight:80,
+                speed:6
+            };
+
+            const rightpaddle = {
+                x:canvas.width - 30 - paddlewidth,
+                y:canvas.height/2 - paddleheight/2,
+                width:paddlewidth,
+                height:paddleheight,
+                originalheight:80,
+                speed:6
+            };
+
+            function drawRect(rect){
+                ctx.fillStyle = "white";
+                ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+            }
+
+            function drawGame(){
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                drawCenterLine();
+                moveBall();
+                drawBall();
+                drawRect(leftpaddle);
+                drawRect(rightpaddle);
+                movePaddles();
+                keyPaddleInside(leftpaddle);
+                keyPaddleInside(rightpaddle);
+                //moveAi();
+                requestAnimationFrame(drawGame);
+            }
+            drawGame();
+</script>
+</body>
+
+</html>
