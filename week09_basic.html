@@ -32,12 +32,13 @@
         let score = 0;
         let life = 3;
         let gameOver = false;
-        let normalSpeed = player.speed;
-        let speedBoostCount = 0;
+        
 
         const player = {
             x : 280, y : 340, width : 40, height : 40, speed : 6
         }
+        let normalSpeed = player.speed;
+        let speedBoostCount = 0;
         function drawplayer() {
             ctx.fillStyle = "deepskyblue";
             ctx.fillRect(player.x, player.y, player.width, player.height);
@@ -163,7 +164,7 @@
                         bullet.y < enemy.y + enemy.height &&
                         bullet.y + bullet.height > enemy.y
                     ){if (enemy.special == true){
-                        if(player.speed = normalSpeed + 2);
+                        player.speed = normalSpeed + 5;
                             speedBoostCount = 180;
                         }
                     }
@@ -232,7 +233,7 @@
             updateSpeedBoost();
             requestAnimationFrame(gameLoop);
         }
-        setInterval(createEnemy, 900);
+        setInterval(createEnemy, 1000);
         gameLoop();
     </script>
 </body>
