@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RPG 이동 - 보석 찾기 퀘스트</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 2px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>RPG 보석 찾기</h1>
+    <p>방향키: 이동 / NPC 근처에서 Space: 대화 / R: 다시 시작</p>
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const tileSize = 40;
+        let gameClear = false;
+
+        // 0: 길, 1: 벽, 2: 물
+        const map = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1],
+            [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 2, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+
+        function drawMap() {
+            for (let row = 0; row < map.length; row++){
+                for(let col = 0; col < map[row].length; col++){
+                    const tile = map[row][col];
+                    if(tile === 0) ctx.fillStyle = "#7ac943";
+                    if(tile === 1) ctx.fillStyle = "#5a3a1a";
+                    if(tile === 2) ctx.fillStyle = "#3498db";
+                    ctx.fillRect(col*tileSize, row*tileSize, tileSize, tileSize);
+                    ctx.strokeStyle = "#777";
+                    ctx.strokeRect(col*tileSize, row*tileSize, tileSize, tileSize);
+                }
+            }
+        }
+        //drawMap();
+
+        const npc = {x : 480, y : 280, width : 32, height : 32};
+
+        function drawNPC() {
+            ctx.fillStyle = "purple";
+            ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
+            ctx.fillStyle = "white";
+            ctx.fillRect(npc.x+7, npc.y+8, 5, 5);
+            ctx.fillRect(npc.x+20, npc.y+8, 5, 5);
+            
+            if(isNearNPC() && !gameClear) {
+                ctx.fillStyle = "black";
+                ctx.font = "14px Arial";
+                ctx.fillText("Space", npc.x - 5, npc.y - 8);
+            }
+        }
+        //drawNPC();
+
+        const player = {x:80, y:80, width:28, height:28, speed:4};
+
+        function drawPlayer() {
+            ctx.fillStyle = "red";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = "white";
+            ctx.fillRect(player.x + 6, player.y + 8, 5, 5);
+            ctx.fillRect(player.x + 18, player.y + 8, 5, 5);
+        }
+        //drawPlayer();
+
+        const keys = {};
+
+        document.addEventListener("keydown", function (event) {
+            keys[event.key] = true;
+
+            if(event.key.startsWith("Arrow") || event.code === "Space") {
+                event.preventDefault();
+            }
+            if(event.repeat) return;
+
+            if(event.code === "Space") talkToNPC();
+
+            if(event.key === "r" || event.key === "R") location.reload();
+        });
+        document.addEventListener("keyup", function(event){
+            keys[event.key] = false;
+        });
+        function movePlayer() {
+
+            if(showDialog || gameClear) return;
+            
+            let nextX = player.x;
+            let nextY = player.y;
+
+            if(keys["ArrowLeft"]) nextX -= player.speed;
+            if(keys["ArrowRight"]) nextX += player.speed;
+            if(keys["ArrowUp"]) nextY -= player.speed;
+            if(keys["ArrowDown"]) nextY += player.speed;
+
+            if(!isWall(nextX, player.y)) player.x = nextX;
+            if(!isWall(player.x, nextY)) player.y = nextY;
+        }
+
+        function isWall(x, y){
+            const left = Math.floor(x/tileSize);
+            const right = Math.floor((x+player.width - 1)/tileSize);
+            const top = Math.floor(y/tileSize);
+            const bottom = Math.floor((y+player.height - 1)/tileSize);
+
+            if(left < 0 || right >= map[0].length || map[top] | !map[bottom])
+            return true;
+            
+            return map[top][left] === 1 || map[top][right] === 1 || 
+                   map[bottom][left] === 1 || map[bottom][right] === 1;
+        }
+
+        function isNearNPC() {
+            const dx = player.x + player.width/2 - (npc.x + npc.width/2);
+            const dy = player.y + player.height/2 - (npc.y + npc.height/2);
+            return Math.sqrt(dx*dx + dy*dy) < 70;
+        }
+
+        const gems = [{x:140, y:300, taken:false},
+            {x:340, y:180, taken:false},
+            {x:580, y:60, taken:false}
+        ];
+
+        let questStarted = false;
+        let gemCount = 0;
+        let showDialog = false;
+        let message = "";
+
+        function drawInfo() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 400, 640, 80);
+            ctx.fillStyle = "black";
+            ctx.font = "18px Arial";
+            ctx.fillText("보석: "+ gemCount +"/3", 20, 435);
+
+            let goal = questStarted ? "보석을 모으세요" : "NPC를 만나세요";
+            if(gemCount===3) goal = "NPC에게 돌아가세요!";
+            ctx.fillText(goal, 170, 435);
+            
+            ctx.font = "14px Arial";
+            ctx.fillText("방향키 이동 / Space 대화 / R 재시작", 20, 465);
+        }
+
+        function talkToNPC() {
+            if(gameClear) return;
+            if(showDialog) {
+                showDialog = false;
+                return;
+            }
+            if(!isNearNPC()) return;
+            if(!questStarted) {
+                questStarted = true;
+                message = "보석 3개를 모아서 다시 오세요";
+            }else if(gemCount===3){
+                gameClear =true;
+                return;
+            }else{
+                message = "보석이 "+(3-gemCount)+"개 남았습니다";
+            }
+            showDialog = true;
+        }
+
+        function drawDialog() {
+            if(!showDialog) return;
+
+            ctx.fillStyle = "black";
+            ctx.fillRect(40, 330, 560, 100);
+            
+            ctx.fillStyle = "white";
+            ctx.font = "18px Arial";
+            ctx.fillText("NPC: "+message, 60, 380);
+            ctx.fillText("Space : 닫기", 60, 410);
+        }
+
+        function drawGems() {
+            if(!questStarted) return;
+            for(let gem of gems) {
+                if(gem.taken) continue;
+                ctx.fillStyle = "gold";
+                ctx.fillRect(gem.x-10, gem.y-10, 20, 20);
+            }
+        }
+
+        function checkGems() {
+            if(!questStarted || showDialog || gameClear) return;
+
+            for(let gem of gems) {
+                const dx = player.x + player.width/2 - gem.x;
+                const dy = player.y + player.height/2 - gem.y;
+                const distane = Math.sqrt(dx*dx + dy*dy);
+
+                if(!gem.taken && distane<25) {
+                    gem.taken = true;
+                    gemCount++;
+                }
+            }
+        }
+
+        function drawClear () {
+            if(!gameClear) return;
+
+            ctx.fillStyle = "white";
+            ctx.fillRect(70,130,500,180);
+            ctx.strokeStyle = "black";
+            ctx.strokeRect(70,130,500,180);
+            
+            ctx.textAlign = "center";
+            ctx.fillStyle = "black";
+            ctx.font = "32px Arial";
+            ctx.fillText("게임 클리어!", 320, 200);
+            ctx.font = "20px Arial";
+            ctx.fillText("보석 3개 수집 성공!", 320, 245);
+            ctx.fillText("R 키 : 다시 시작", 320, 280);
+            ctx.textAlign = "left";
+        }
+        
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            movePlayer();
+            checkGems();
+            drawMap();
+            drawGems();
+            drawNPC();
+            drawPlayer();
+            drawInfo();
+            drawDialog();
+            drawClear();
+            requestAnimationFrame(gameLoop);
+
+        }
+        gameLoop();
+    </script>
+</body>
+
+</html>

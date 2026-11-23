@@ -1,0 +1,511 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RPG 이동 - 보석 찾기 퀘스트</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 2px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>RPG 보석 찾기</h1>
+    <p>방향키: 이동 / NPC 근처에서 Space: 대화 / R: 다시 시작</p>
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const tileSize = 40;
+
+        let gameClear = false;
+        let gameOver = false;
+
+        // 0: 길, 1: 벽, 2: 물
+        const map = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1],
+            [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 2, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+
+        // 맵 그리기
+        function drawMap() {
+            for (let row = 0; row < map.length; row++) {
+                for (let col = 0; col < map[row].length; col++) {
+                    const tile = map[row][col];
+
+                    if (tile === 0) ctx.fillStyle = "#7ac943";
+                    if (tile === 1) ctx.fillStyle = "#5a3a1a";
+                    if (tile === 2) ctx.fillStyle = "#3498db";
+
+                    ctx.fillRect(
+                        col * tileSize,
+                        row * tileSize,
+                        tileSize,
+                        tileSize
+                    );
+
+                    ctx.strokeStyle = "#777";
+                    ctx.strokeRect(
+                        col * tileSize,
+                        row * tileSize,
+                        tileSize,
+                        tileSize
+                    );
+                }
+            }
+        }
+
+        // NPC
+        const npc = {
+            x: 480,
+            y: 280,
+            width: 32,
+            height: 32
+        };
+
+        function drawNPC() {
+            ctx.fillStyle = "purple";
+            ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
+
+            ctx.fillStyle = "white";
+            ctx.fillRect(npc.x + 7, npc.y + 8, 5, 5);
+            ctx.fillRect(npc.x + 20, npc.y + 8, 5, 5);
+
+            if (isNearNPC() && !gameClear && !gameOver) {
+                ctx.fillStyle = "black";
+                ctx.font = "14px Arial";
+                ctx.fillText("Space", npc.x - 5, npc.y - 8);
+            }
+        }
+
+        // 플레이어
+        const player = {
+            x: 80,
+            y: 80,
+            width: 28,
+            height: 28,
+            speed: 4
+        };
+
+        function drawPlayer() {
+            ctx.fillStyle = "red";
+            ctx.fillRect(
+                player.x,
+                player.y,
+                player.width,
+                player.height
+            );
+
+            ctx.fillStyle = "white";
+            ctx.fillRect(player.x + 6, player.y + 8, 5, 5);
+            ctx.fillRect(player.x + 18, player.y + 8, 5, 5);
+        }
+
+        // 키보드 입력
+        const keys = {};
+
+        document.addEventListener("keydown", function (event) {
+            keys[event.key] = true;
+
+            if (
+                event.key.startsWith("Arrow") ||
+                event.code === "Space"
+            ) {
+                event.preventDefault();
+            }
+
+            if (event.repeat) return;
+
+            if (event.code === "Space") talkToNPC();
+
+            if (event.key === "r" || event.key === "R") {
+                location.reload();
+            }
+        });
+
+        document.addEventListener("keyup", function (event) {
+            keys[event.key] = false;
+        });
+
+        // 플레이어 이동
+        function movePlayer() {
+            if (showDialog || gameClear || gameOver) return;
+
+            let nextX = player.x;
+            let nextY = player.y;
+
+            if (keys["ArrowLeft"]) nextX -= player.speed;
+            if (keys["ArrowRight"]) nextX += player.speed;
+            if (keys["ArrowUp"]) nextY -= player.speed;
+            if (keys["ArrowDown"]) nextY += player.speed;
+
+            if (!isWall(nextX, player.y)) {
+                player.x = nextX;
+            }
+
+            if (!isWall(player.x, nextY)) {
+                player.y = nextY;
+            }
+        }
+
+        // 벽 충돌 검사
+        function isWall(x, y) {
+            const left = Math.floor(x / tileSize);
+            const right = Math.floor(
+                (x + player.width - 1) / tileSize
+            );
+            const top = Math.floor(y / tileSize);
+            const bottom = Math.floor(
+                (y + player.height - 1) / tileSize
+            );
+
+            if (
+                left < 0 ||
+                right >= map[0].length ||
+                top < 0 ||
+                bottom >= map.length
+            ) {
+                return true;
+            }
+
+            return (
+                map[top][left] === 1 ||
+                map[top][right] === 1 ||
+                map[bottom][left] === 1 ||
+                map[bottom][right] === 1
+            );
+        }
+
+        // NPC 근처인지 확인
+        function isNearNPC() {
+            const dx =
+                player.x + player.width / 2 -
+                (npc.x + npc.width / 2);
+
+            const dy =
+                player.y + player.height / 2 -
+                (npc.y + npc.height / 2);
+
+            return Math.sqrt(dx * dx + dy * dy) < 70;
+        }
+
+        // 보석
+        const gems = [
+            { x: 140, y: 300, taken: false },
+            { x: 340, y: 180, taken: false },
+            { x: 580, y: 60, taken: false }
+        ];
+
+        let questStarted = false;
+        let gemCount = 0;
+        let showDialog = false;
+        let message = "";
+
+        // 안내창
+        function drawInfo() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 400, 640, 80);
+
+            ctx.fillStyle = "black";
+            ctx.font = "18px Arial";
+
+            ctx.fillText("보석: " + gemCount + "/3", 20, 435);
+
+            let goal = questStarted
+                ? "보석을 모으세요"
+                : "NPC를 만나세요";
+
+            if (gemCount === 3) {
+                goal = "NPC에게 돌아가세요!";
+            }
+
+            ctx.fillText(goal, 170, 435);
+
+            ctx.font = "14px Arial";
+            ctx.fillText(
+                "방향키 이동 / Space 대화 / R 재시작",
+                20,
+                465
+            );
+        }
+
+        // NPC 대화
+        function talkToNPC() {
+            if (gameClear || gameOver) return;
+
+            if (showDialog) {
+                showDialog = false;
+                return;
+            }
+
+            if (!isNearNPC()) return;
+
+            if (!questStarted) {
+                questStarted = true;
+                message = "보석 3개를 모아서 다시 오세요";
+            } else if (gemCount === 3) {
+                gameClear = true;
+                return;
+            } else {
+                message = "보석이 " + (3 - gemCount) + "개 남았습니다";
+            }
+
+            showDialog = true;
+        }
+
+        // 대화창
+        function drawDialog() {
+            if (!showDialog) return;
+
+            ctx.fillStyle = "black";
+            ctx.fillRect(40, 330, 560, 100);
+
+            ctx.fillStyle = "white";
+            ctx.font = "18px Arial";
+
+            ctx.fillText("NPC: " + message, 60, 380);
+            ctx.fillText("Space : 닫기", 60, 410);
+        }
+
+        // 보석 그리기
+        function drawGems() {
+            if (!questStarted) return;
+
+            for (let gem of gems) {
+                if (gem.taken) continue;
+
+                ctx.fillStyle = "gold";
+                ctx.fillRect(
+                    gem.x - 10,
+                    gem.y - 10,
+                    20,
+                    20
+                );
+            }
+        }
+
+        // 보석 획득 검사
+        function checkGems() {
+            if (
+                !questStarted ||
+                showDialog ||
+                gameClear ||
+                gameOver
+            ) return;
+
+            for (let gem of gems) {
+                const dx =
+                    player.x + player.width / 2 - gem.x;
+
+                const dy =
+                    player.y + player.height / 2 - gem.y;
+
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (!gem.taken && distance < 25) {
+                    gem.taken = true;
+                    gemCount++;
+                }
+            }
+        }
+
+        // 적 캐릭터
+        const enemies = [
+            {
+                x: 100,
+                y: 260,
+                width: 28,
+                height: 28,
+                speed: 2,
+                direction: 1,
+                type: "horizontal",
+                min: 80,
+                max: 560
+            },
+            {
+                x: 300,
+                y: 80,
+                width: 28,
+                height: 28,
+                speed: 2,
+                direction: 1,
+                type: "vertical",
+                min: 80,
+                max: 240
+            }
+        ];
+
+        // 적 이동
+        function moveEnemies() {
+            if (
+                !questStarted ||
+                showDialog ||
+                gameOver ||
+                gameClear
+            ) return;
+
+            for (let enemy of enemies) {
+                if (enemy.type === "horizontal") {
+                    enemy.x += enemy.speed * enemy.direction;
+
+                    if (
+                        enemy.x <= enemy.min ||
+                        enemy.x >= enemy.max
+                    ) {
+                        enemy.direction *= -1;
+                    }
+                }
+
+                if (enemy.type === "vertical") {
+                    enemy.y += enemy.speed * enemy.direction;
+
+                    if (
+                        enemy.y <= enemy.min ||
+                        enemy.y >= enemy.max
+                    ) {
+                        enemy.direction *= -1;
+                    }
+                }
+            }
+        }
+
+        // 적 그리기
+        function drawEnemies() {
+            if (!questStarted || gameOver) return;
+
+            for (let enemy of enemies) {
+                if (enemy.type === "horizontal") {
+                    ctx.fillStyle = "orange";
+                } else {
+                    ctx.fillStyle = "blue";
+                }
+
+                ctx.fillRect(
+                    enemy.x,
+                    enemy.y,
+                    enemy.width,
+                    enemy.height
+                );
+
+                // 적의 눈
+                ctx.fillStyle = "white";
+                ctx.fillRect(enemy.x + 5, enemy.y + 6, 5, 5);
+                ctx.fillRect(enemy.x + 18, enemy.y + 6, 5, 5);
+            }
+        }
+
+        // 적과 플레이어 충돌 검사
+        function checkEnemyCollision() {
+            if (
+                !questStarted ||
+                gameOver ||
+                gameClear
+            ) return;
+
+            for (let enemy of enemies) {
+                if (
+                    player.x < enemy.x + enemy.width &&
+                    player.x + player.width > enemy.x &&
+                    player.y < enemy.y + enemy.height &&
+                    player.y + player.height > enemy.y
+                ) {
+                    gameOver = true;
+                    break;
+                }
+            }
+        }
+
+        // 게임 클리어 화면
+        function drawClear() {
+            if (!gameClear) return;
+
+            ctx.fillStyle = "white";
+            ctx.fillRect(70, 130, 500, 180);
+
+            ctx.strokeStyle = "black";
+            ctx.strokeRect(70, 130, 500, 180);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "black";
+            ctx.font = "32px Arial";
+
+            ctx.fillText("게임 클리어!", 320, 200);
+
+            ctx.font = "20px Arial";
+            ctx.fillText("보석 3개 수집 성공!", 320, 245);
+            ctx.fillText("R 키 : 다시 시작", 320, 280);
+
+            ctx.textAlign = "left";
+        }
+
+        // 게임 오버 화면
+        function drawGameOver() {
+            if (!gameOver) return;
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+
+            ctx.fillStyle = "red";
+            ctx.font = "36px Arial";
+            ctx.fillText("GAME OVER", 320, 210);
+
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("적에게 잡혔습니다!", 320, 255);
+            ctx.fillText("R 키 : 다시 시작", 320, 295);
+
+            ctx.textAlign = "left";
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            movePlayer();
+            moveEnemies();
+
+            checkGems();
+            checkEnemyCollision();
+
+            drawMap();
+            drawGems();
+            drawEnemies();
+            drawNPC();
+            drawPlayer();
+            drawInfo();
+            drawDialog();
+            drawClear();
+            drawGameOver();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+
+    </script>
+</body>
+</html>
